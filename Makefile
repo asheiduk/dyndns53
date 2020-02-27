@@ -42,7 +42,7 @@ build/function-arn:
 create-function: build/role-arn build/function.zip
 	aws lambda create-function \
 		--function-name $(function_name) \
-		--runtime python2.7 \
+		--runtime python3.7 \
 		--role $(shell cat build/role-arn) \
 		--handler lambda_function.lambda_handler \
 		--timeout 10 \
