@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 import json
-import re
+from ipaddress import IPv4Address, AddressValueError
 from base64 import b64decode
 
 import boto3
@@ -41,15 +41,6 @@ conf = {
         },
     },
 }
-
-
-re_ip = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$")
-def _parse_ip(ipstring):
-    m = re_ip.match(ipstring)
-    if bool(m) and all([0 <= int(n) <= 255 for n in m.groups()]):
-        return ipstring
-    else:
-        raise BadAgentException("Invalid IP string: {}".format(ipstring))
 
 
 client53 = boto3.client('route53','us-west-2')
@@ -143,10 +134,13 @@ def _handler(event, context):
         raise HostnameException()
 
     try:
-        ip = _parse_ip(event['querystring']['myip'])
+        ipstring = event['querystring']['myip']
+        ip = str(IPv4Address(ipstring))
         logger.debug("User supplied IP address: {}".format(ip))
+    except AddressValueError:
+        raise BadAgentException("Invalid IP string: {}".format(ipstring))
     except KeyError as e:
-        ip = _parse_ip(event['context']['source-ip'])
+        ip = str(IPv4Address(event['context']['source-ip']))
         msg = "User omitted IP address, using best-guess from $context: {}"
         logger.debug(msg.format(ip))
 
