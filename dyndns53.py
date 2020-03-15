@@ -23,15 +23,9 @@ class HostnameException(Exception):
 class AuthorizationException(Exception):
     status = 403
     response = "badauth"
-class FQDNException(Exception):
-    status = 400
-    response = "notfqdn"
 class BadAgentException(Exception):
     status = 400
     response = "badagent"
-class AbuseException(Exception):
-    status = 403
-    response = "abuse"
 
 
 conf = {
