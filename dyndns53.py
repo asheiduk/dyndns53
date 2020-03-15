@@ -14,16 +14,18 @@ from base64 import b64decode
 import boto3
 
 
-class AuthorizationMissing(Exception):
+class ClientError(Exception):
+    pass
+class AuthorizationMissing(ClientError):
     status = 401
     response = {"WWW-Authenticate":"Basic realm=dyndns53"}
-class HostnameException(Exception):
+class HostnameException(ClientError):
     status = 404
     response = "nohost"
-class AuthorizationException(Exception):
+class AuthorizationException(ClientError):
     status = 403
     response = "badauth"
-class BadAgentException(Exception):
+class BadAgentException(ClientError):
     status = 400
     response = "badagent"
 
@@ -151,15 +153,15 @@ def _handler(event, context):
 
 
 def lambda_handler(event, context):
+    def json_error(e, status, response):
+        msg = json.dumps({'status': status, 'response': response, 'additional': str(e)})
+        return type(e)(msg)
+
     try:
         response = _handler(event, context)
+    except ClientError as e:
+        raise json_error(e, status = e.status, response = e.response) from e
     except Exception as e:
-        try:
-            error_info = {'status':e.status, 'response':e.response, 'additional':str(e)}
-        except AttributeError:
-            # Fallback to more simple error description
-            error_info = {'status':500, 'response':"911", 'additional':str(e)}
-        finally:
-            raise type(e)(json.dumps(error_info)) from e
+        raise json_error(e, status = 500, response = '911') from e
 
     return { 'status': 200, 'response': response }
