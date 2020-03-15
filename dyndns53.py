@@ -38,13 +38,11 @@ conf = {
     '<username>:<password>': {
         'hosts': {
             '<host.example.com.>': {
-                'aws_region': 'us-west-2',
                 'zone_id': '<MY_ZONE_ID>',
                 'record': {
                     'ttl': 60,
                     'type': 'A',
                 },
-                'last_update': None,
             },
         },
     },

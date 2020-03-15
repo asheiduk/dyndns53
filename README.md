@@ -41,13 +41,11 @@ The Lambda function parses the client update request and performs the update in 
       '<username>:<password>': {
          'hosts': {
             '<host.example.com.>': { # FQDN (don't forget trailing `.`)
-               'aws_region': 'us-west-2', # not actually important
                'zone_id': '<MY_ZONE_ID>', # same zone ID as in `iam_polcy`
                'record': {
                   'ttl': 60, # TTL in seconds; should be low for DDNS
                   'type': 'A', # only `A` records supported right now
-               },
-               'last_update': None, # not currently used
+               }
             }
          }
       }
