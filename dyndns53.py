@@ -45,6 +45,69 @@ conf = {
 }
 
 
+def lambda_handler(event, context):
+    def json_error(e, status, response):
+        msg = json.dumps({'status': status, 'response': response, 'additional': str(e)})
+        return type(e)(msg)
+
+    try:
+        response = _handler(event, context)
+    except ClientError as e:
+        raise json_error(e, status = e.status, response = e.response) from e
+    except Exception as e:
+        raise json_error(e, status = 500, response = '911') from e
+
+    return { 'status': 200, 'response': response }
+
+
+def _handler(event, context):
+
+    if 'header' not in event:
+        msg = "Headers not populated properly. Check API Gateway configuration."
+        raise KeyError(msg)
+
+    try:
+        auth_header = event['header']['Authorization']
+    except KeyError as e:
+        raise AuthorizationMissing("Authorization required but not provided.")
+
+    try:
+        auth_user, auth_pass = (
+            b64decode(auth_header[len('Basic '):]).decode('utf-8').split(':') )
+    except Exception as e:
+        msg = "Malformed basicauth string: {}"
+        raise BadAgentException(msg.format(auth_header))
+
+    auth_string = ':'.join([auth_user,auth_pass])
+    if auth_string not in conf:
+        raise AuthorizationException("Bad username/password.")
+
+    try:
+        hosts = set( h if h.endswith('.') else h+'.' for h in
+                event['querystring']['hostname'].split(',') )
+    except KeyError as e:
+        raise BadAgentException("Hostname(s) required but not provided.")
+
+    if any(host not in conf[auth_string]['hosts'] for host in hosts):
+        raise HostnameException()
+
+    try:
+        ipstring = event['querystring']['myip']
+        ip = str(IPv4Address(ipstring))
+        logger.debug("User supplied IP address: {}".format(ip))
+    except AddressValueError:
+        raise BadAgentException("Invalid IP string: {}".format(ipstring))
+    except KeyError as e:
+        ip = str(IPv4Address(event['context']['source-ip']))
+        msg = "User omitted IP address, using best-guess from $context: {}"
+        logger.debug(msg.format(ip))
+
+    if any(r53_upsert(host,conf[auth_string]['hosts'][host],ip) for host in hosts):
+        return "good {}".format(ip)
+    else:
+        return "nochg {}".format(ip)
+
+
 client53 = boto3.client('route53','us-west-2')
 def r53_upsert(host, hostconf, ip):
 
@@ -102,66 +165,3 @@ def r53_upsert(host, hostconf, ip):
     )
 
     return True
-
-
-def _handler(event, context):
-
-    if 'header' not in event:
-        msg = "Headers not populated properly. Check API Gateway configuration."
-        raise KeyError(msg)
-
-    try:
-        auth_header = event['header']['Authorization']
-    except KeyError as e:
-        raise AuthorizationMissing("Authorization required but not provided.")
-
-    try:
-        auth_user, auth_pass = (
-            b64decode(auth_header[len('Basic '):]).decode('utf-8').split(':') )
-    except Exception as e:
-        msg = "Malformed basicauth string: {}"
-        raise BadAgentException(msg.format(auth_header))
-
-    auth_string = ':'.join([auth_user,auth_pass])
-    if auth_string not in conf:
-        raise AuthorizationException("Bad username/password.")
-
-    try:
-        hosts = set( h if h.endswith('.') else h+'.' for h in
-                event['querystring']['hostname'].split(',') )
-    except KeyError as e:
-        raise BadAgentException("Hostname(s) required but not provided.")
-
-    if any(host not in conf[auth_string]['hosts'] for host in hosts):
-        raise HostnameException()
-
-    try:
-        ipstring = event['querystring']['myip']
-        ip = str(IPv4Address(ipstring))
-        logger.debug("User supplied IP address: {}".format(ip))
-    except AddressValueError:
-        raise BadAgentException("Invalid IP string: {}".format(ipstring))
-    except KeyError as e:
-        ip = str(IPv4Address(event['context']['source-ip']))
-        msg = "User omitted IP address, using best-guess from $context: {}"
-        logger.debug(msg.format(ip))
-
-    if any(r53_upsert(host,conf[auth_string]['hosts'][host],ip) for host in hosts):
-        return "good {}".format(ip)
-    else:
-        return "nochg {}".format(ip)
-
-
-def lambda_handler(event, context):
-    def json_error(e, status, response):
-        msg = json.dumps({'status': status, 'response': response, 'additional': str(e)})
-        return type(e)(msg)
-
-    try:
-        response = _handler(event, context)
-    except ClientError as e:
-        raise json_error(e, status = e.status, response = e.response) from e
-    except Exception as e:
-        raise json_error(e, status = 500, response = '911') from e
-
-    return { 'status': 200, 'response': response }
