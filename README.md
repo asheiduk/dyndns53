@@ -7,7 +7,6 @@ DynDNS53 is an implementation for AWS of the dyndns2 protocol used by many DDNS 
 - An Amazon Web Services (AWS) account.
 - A domain name you control, with name servers pointing to Route 53.
 - A hosted zone for your domain on Route 53.
-- An `A` record for your host's FQDN in the hosted zone.
 - Patience with AWS Console
 
 ## AWS configuration
@@ -42,10 +41,7 @@ The Lambda function parses the client update request and performs the update in 
          'hosts': {
             '<host.example.com.>': { # FQDN (don't forget trailing `.`)
                'zone_id': '<MY_ZONE_ID>', # same zone ID as in `iam_polcy`
-               'record': {
-                  'ttl': 60, # TTL in seconds; should be low for DDNS
-                  'type': 'A', # only `A` records supported right now
-               }
+               'ttl': 60, # TTL in seconds; should be low for DDNS
             }
          }
       }
