@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8 -*-
+
+import argparse
+from base64 import b64encode
+import json
+import logging
+
+logging.basicConfig()
+
+# TODO: make all required XOR also supply defaults
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument('-m', '--myip')
+parser.add_argument('-h', '--hostname')
+parser.add_argument('-a', '--authorization')
+parser.add_argument('-s', '--sourceip')
+parser.add_argument('-v', '--verbose', action='store_true')
+args = parser.parse_args()
+
+# TODO: just using "-a test" should search the password in the config
+#   XOR use another option for that (e.g. --user)
+#
+
+event = {
+    'querystring': {
+        'hostname': args.hostname,
+        'myip': args.myip,
+    },
+    'header': {
+        # TODO: just using `b64encode(args.authorization.encode())` adds
+        # literal `b'b64data'` quotes. There must be simpler ways to do what must be done.
+        'Authorization': 'Basic ' + b64encode(args.authorization.encode()).decode(),
+    },
+    'context': {
+        'source-ip': args.sourceip
+    }
+}
+
+# Explicitly allow empty strings.
+# Passing 'None' is not possible though.
+if args.myip is None:
+   del(event['querystring']['myip'])
+if args.hostname is None:
+    del(event['querystring']['hostname'])
+if args.sourceip is None:
+   del(event['context']['source-ip'])
+
+if args.verbose:
+    print(json.dumps(event, indent=4))
+
+import dyndns53
+dyndns53.lambda_handler(event, None)
