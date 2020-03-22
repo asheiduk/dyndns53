@@ -83,12 +83,14 @@ def _handler(event, context):
         raise AuthorizationException("Bad username/password.")
 
     try:
-        hosts = set( h if h.endswith('.') else h+'.' for h in
-                event['querystring']['hostname'].split(',') )
+        host = event['querystring']['hostname']
     except KeyError as e:
-        raise BadAgentException("Hostname(s) required but not provided.")
+        raise BadAgentException("Hostname required but not provided.")
 
-    if any(host not in conf[auth_string]['hosts'] for host in hosts):
+    if not host.endswith('.'):
+        host += '.'
+
+    if host not in conf[auth_string]['hosts']:
         raise HostnameException()
 
     try:
@@ -102,7 +104,7 @@ def _handler(event, context):
         msg = "User omitted IP address, using best-guess from $context: {}"
         logger.debug(msg.format(ip))
 
-    if any(r53_upsert(host,conf[auth_string]['hosts'][host],ip) for host in hosts):
+    if r53_upsert(host, conf[auth_string]['hosts'][host], ip):
         return "good {}".format(ip)
     else:
         return "nochg {}".format(ip)
