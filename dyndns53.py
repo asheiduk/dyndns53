@@ -115,7 +115,7 @@ def _handler(event, context):
 
 def parse_myip(myip: str) -> (IPv4Address, IPv6Address):
     ipv4, ipv6 = None, None
-    for ipstring in myip.split(','):
+    for ipstring in filter(None, myip.split(',')):
         # TODO: ignore empty components?
         # TODO: move try/except to the caller?
         try:
