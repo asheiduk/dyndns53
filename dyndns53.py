@@ -100,9 +100,9 @@ def _handler(event, context):
         # possible bug: there is no source-ip (perhaps due to mapping errors or due to unknown protocols?)
         ip = ip_address(event['context']['source-ip'])
         if ip.version == 4:
-            ipv4 = ip
+            ipv4, ipv6 = ip, None
         elif ip.version == 6:
-            ipv6 = ip
+            ipv4, ipv6 = None, ip
         logger.debug(f'User omitted IP address, using best-guess from $context: {ip}')
 
     # prefer IPv4 if both are supplied
